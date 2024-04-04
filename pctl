@@ -177,9 +177,6 @@ open_in_tmux() {
                 fzf --cycle --bind 'tab:toggle-up,btab:toggle-down'
         )
 
-        echo "selected: $selected"
-        exit
-
         # selected=$(
         #     find "$WORK" \
         #         "$LOCAL_PLUGINS" \
