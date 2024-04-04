@@ -1,0 +1,258 @@
+#!/usr/bin/env bash
+#
+# pctl: a simple tool to manage your projects
+#
+# Author: @trimclain
+# License: GPL-3.0
+
+# shellcheck disable=SC2155,SC2164
+# Disabled:
+# "Declare and assign separately to avoid masking return values":
+#  https://www.shellcheck.net/wiki/SC2155
+# "Use 'pushd ... || exit' or 'pushd ... || exit' in case pushd fails":
+#  https://www.shellcheck.net/wiki/SC2164
+
+GREEN='\e[0;32m'
+BLUE='\e[0;34m'
+RED='\e[0;31m'
+PURPLE="\e[0;35m"
+# CYAN="\e[1;36m"
+RESET='\e[0m'
+
+readonly PCTL_SHARE="$HOME/.local/share/pctl"
+
+if [[ -z $PROJECTLIST ]]; then
+    readonly PROJECTLIST="$PCTL_SHARE/projectlist"
+    if [[ ! -f $PROJECTLIST ]]; then
+        mkdir -p "$PCTL_SHARE"
+        touch "$PROJECTLIST"
+    fi
+fi
+
+ensure_installed() {
+    if ! command -v "$1" > /dev/null; then
+        echo "Error: $1 not found"
+        exit 1
+    fi
+}
+
+# Idea:
+#                         MESSAGE_LENGTH
+#                               |
+# (-------------------------------------------------------------)
+# -------------------------> pctl <-----------------------------
+# (------------------------)
+#            |
+#      LEFT_PADDING
+
+readonly MESSAGE_LENGTH=60
+readonly LEFT_LENGTH=25
+
+# Produce the following:
+# -------------------------> <text> <-----------------------------
+center_text() {
+    local text="$1"
+    local text_length=${#text}
+    local right_length=$((MESSAGE_LENGTH - 2 - text_length - LEFT_PADDING))
+
+    local left=$(printf "%-${LEFT_LENGTH}s" "" | tr ' ' '-')
+    local right=$(printf "%-${right_length}s" "" | tr ' ' '-')
+    printf "%s> ${PURPLE}%s${GREEN} <%s" "$left" "$text" "$right"
+
+}
+
+show_status() {
+    while IFS= read -r project; do
+        local project_name="${project##*/}"
+        local formatted_line=$(center_text "$project_name")
+
+        if [ -d "$project/.git" ]; then
+            echo -e "${GREEN}${formatted_line}${RESET}"
+
+            if [[ -n $(git -C "$project" status --porcelain) ]]; then
+                git -C "$project" status
+            else
+                echo "Nothing to commit"
+            fi
+        fi
+    done < "$PROJECTLIST"
+}
+
+pull_updates() {
+    while IFS= read -r project; do
+        local project_name="${project##*/}"
+        formatted_line=$(center_text "$project_name")
+
+        if [ -d "$project/.git" ]; then
+            echo -e "${GREEN}${formatted_line}${RESET}"
+
+            #######################################################################
+            # TODO:
+            # UPSTREAM=${1:-'@{u}'}
+            # LOCAL=$(git rev-parse @)
+            # REMOTE=$(git rev-parse "$UPSTREAM")
+            # BASE=$(git merge-base @ "$UPSTREAM")
+            # if [ $LOCAL = $REMOTE ]; then
+            #     echo "Up-to-date"
+            # elif [ $LOCAL = $BASE ]; then
+            #     echo "Pulling updates..."
+            #     git pull
+            # elif [ $REMOTE = $BASE ]; then
+            #     echo "Pushing updates..."
+            #     git push
+            # else
+            #     echo "Diverged"
+            # fi
+            #######################################################################
+
+            git -C "$project" pull &
+        fi
+    done < "$PROJECTLIST"
+    wait
+}
+
+add_project() {
+    local project=$(pwd)
+    local project_name="${project##*/}"
+    # check if project already in the list
+    if grep -qx "$project" "$PROJECTLIST"; then
+        echo -e "Project ${BLUE}$project_name${RESET} is already in the list ${RED}${RESET}"
+    else
+        echo -en "Adding ${BLUE}$project_name${RESET} to the list "
+        echo "$project" >> ~/.myconfig/.db/projectlist
+        echo -e "${GREEN}󰄴${RESET}"
+    fi
+}
+
+get_project() {
+    ensure_installed fzf
+
+    # filter out installed projects
+    local project=$(while IFS= read -r line; do
+        if [ ! -d "$line" ]; then
+            echo "$line"
+        fi
+    done < "$PROJECTLIST" | fzf)
+
+    if [[ -z $project ]]; then
+        return 0
+    fi
+
+    local project_name="${project##*/}"
+    local project_dir="${project%/*}"
+    local current_user=$(whoami)
+
+    if [[ ! -d $project_dir ]]; then
+        mkdir -p "$project_dir"
+    fi
+
+    echo -en "Cloning ${BLUE}$project_name${RESET} "
+    # TODO: I need a more universal way
+    # check if its getnf
+    if [[ "$project_name" == "getnf" ]]; then
+        git clone --quiet git@github.com:"$project_name/$project_name" "$project" > /dev/null
+    else
+        git clone --quiet git@github.com:"$current_user/$project_name" "$project" > /dev/null
+    fi
+    # INFO: requires a Nerd Font
+    echo -e "${GREEN}󰄴${RESET}"
+}
+
+open_in_tmux() {
+    ensure_installed fzf
+    ensure_installed tmux
+
+    local selected
+    if [[ -n "$1" ]]; then
+        selected=$1
+    else
+        selected=$(
+            while IFS= read -r line; do
+                # TODO: this is my custom filter, maybe move to config later
+                if [[ -d "$line" && "$line" == "$HOME/projects/"* ]]; then
+                    echo "$line"
+                fi
+            done < "$PROJECTLIST" |
+                sed "s|$HOME/\(.*\)|\1|" |
+                fzf --cycle --bind 'tab:toggle-up,btab:toggle-down'
+        )
+
+        echo "selected: $selected"
+        exit
+
+        # selected=$(
+        #     find "$WORK" \
+        #         "$LOCAL_PLUGINS" \
+        #         "$OPENSOURCE_PROJECTS" \
+        #         "$PERSONAL_PROJECTS" \
+        #         "$PERSONAL_PROJECTS/bots" \
+        #         -mindepth 1 -maxdepth 1 -type d \
+        #         -not -path "$PERSONAL_PROJECTS/bots" \
+        #         -not -path "$LOCAL_PLUGINS" 2> /dev/null |
+        #         sed "s|$HOME/\(.*\)|\1|" |
+        #         fzf --cycle --bind 'tab:toggle-up,btab:toggle-down'
+        # )
+
+    fi
+
+    if [[ -z $selected ]]; then
+        exit 0
+    fi
+
+    # make selected back to fullpath
+    # if [[ ! -d $selected ]]; then
+    if [[ ! $selected == $HOME/* ]]; then
+        selected=$HOME/$selected
+    fi
+    selected_name=$(basename "$selected" | tr . _)
+
+    # Tmux not running or detached:
+    # the -A flag makes new-session behave like attach-session if session-name
+    # already exists
+    if [[ -z $TMUX ]]; then
+        tmux new-session -A -s "$selected_name" -c "$selected"
+        exit 0
+    fi
+
+    # the -d flag makes tmux detach from a session and then creates new one
+    # with the name given after -s flag
+    if ! tmux has-session -t="$selected_name" 2> /dev/null; then
+        tmux new-session -ds "$selected_name" -c "$selected"
+    fi
+
+    tmux switch-client -t "$selected_name"
+}
+
+display_help() {
+    cat << EOF
+Usage:
+  pctl [command]
+
+COMMANDS:
+  h, help      Show this help message
+  s, status    Show the status of all projects
+  p, pull      Pull updates in all projects
+  g, get       Clone a project from github
+  a, add       Add a project to the list
+  o, open      Open a project in a new tmux session
+EOF
+}
+
+main() {
+    if [[ $# -eq 0 ]]; then
+        display_help
+        exit 0
+    fi
+    local cmd=$1
+    case $cmd in
+        "get" | "g") get_project && exit 0 ;;
+        "add" | "a") add_project && exit 0 ;;
+        "status" | "s") show_status && exit 0 ;;
+        "pull" | "p") pull_updates && exit 0 ;;
+        "open" | "o") open_in_tmux "$2" && exit 0 ;;
+        "help" | "h") display_help && exit 0 ;;
+        *) echo "Unknown command: $cmd" ;;
+    esac
+}
+
+main "$@"
