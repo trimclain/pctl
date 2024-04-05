@@ -43,7 +43,7 @@ ensure_installed() {
 # -------------------------> pctl <-----------------------------
 # (------------------------)
 #            |
-#      LEFT_PADDING
+#      LEFT_LENGTH
 
 readonly MESSAGE_LENGTH=60
 readonly LEFT_LENGTH=25
@@ -53,7 +53,7 @@ readonly LEFT_LENGTH=25
 center_text() {
     local text="$1"
     local text_length=${#text}
-    local right_length=$((MESSAGE_LENGTH - 2 - text_length - LEFT_PADDING))
+    local right_length=$((MESSAGE_LENGTH - 2 - text_length - LEFT_LENGTH))
 
     local left=$(printf "%-${LEFT_LENGTH}s" "" | tr ' ' '-')
     local right=$(printf "%-${right_length}s" "" | tr ' ' '-')
