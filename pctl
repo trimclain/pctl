@@ -20,6 +20,7 @@ PURPLE="\e[0;35m"
 RESET='\e[0m'
 
 readonly PCTL_SHARE="$HOME/.local/share/pctl"
+readonly CURRENT_USER=$(whoami)
 
 if [[ -z $PROJECTLIST ]]; then
     readonly PROJECTLIST="$PCTL_SHARE/projectlist"
@@ -27,6 +28,13 @@ if [[ -z $PROJECTLIST ]]; then
         mkdir -p "$PCTL_SHARE"
         touch "$PROJECTLIST"
     fi
+fi
+
+# Migration Info:
+# csv columns: project_location, github project user (default: $USER)
+if ! grep -q ',' "$PROJECTLIST"; then
+    echo -e "${RED}Error:${RESET} $PROJECTLIST isn't a CSV. ${BLUE}Migrate${RESET} to continue."
+    exit 1
 fi
 
 ensure_installed() {
@@ -62,7 +70,7 @@ center_text() {
 }
 
 show_status() {
-    while IFS= read -r project; do
+    while IFS=, read -r project _; do
         local project_name="${project##*/}"
         local formatted_line=$(center_text "$project_name")
 
@@ -79,7 +87,7 @@ show_status() {
 }
 
 pull_updates() {
-    while IFS= read -r project; do
+    while IFS=, read -r project _; do
         local project_name="${project##*/}"
         formatted_line=$(center_text "$project_name")
 
@@ -87,7 +95,7 @@ pull_updates() {
             echo -e "${GREEN}${formatted_line}${RESET}"
 
             #######################################################################
-            # TODO:
+            # TODO: should I fetch to make sure it's latest? Was that the problem?
             # UPSTREAM=${1:-'@{u}'}
             # LOCAL=$(git rev-parse @)
             # REMOTE=$(git rev-parse "$UPSTREAM")
@@ -115,11 +123,14 @@ add_project() {
     local project=$(pwd)
     local project_name="${project##*/}"
     # check if project already in the list
+    # TODO: this won't work in csv, but getting rid of -x mistakenly be true
+    # if $project matsches $github_user
     if grep -qx "$project" "$PROJECTLIST"; then
         echo -e "Project ${BLUE}$project_name${RESET} is already in the list ${RED}${RESET}"
     else
         echo -en "Adding ${BLUE}$project_name${RESET} to the list "
-        echo "$project" >> ~/.myconfig/.db/projectlist
+        # TODO: need a flag if github_user not default
+        echo "$project,$CURRENT_USER" >> "$PROJECTLIST"
         echo -e "${GREEN}󰄴${RESET}"
     fi
 }
@@ -128,6 +139,10 @@ get_project() {
     ensure_installed fzf
 
     # filter out installed projects
+    # TODO: migrate to csv format for PROJECTLIST
+    # while IFS=, read -r project _; do
+    # NOTE: how do I remember the github user of picked line with fzf?
+    # NOTE: should I grep for the line again?
     local project=$(while IFS= read -r line; do
         if [ ! -d "$line" ]; then
             echo "$line"
@@ -140,7 +155,6 @@ get_project() {
 
     local project_name="${project##*/}"
     local project_dir="${project%/*}"
-    local current_user=$(whoami)
 
     if [[ ! -d $project_dir ]]; then
         mkdir -p "$project_dir"
@@ -152,13 +166,14 @@ get_project() {
     if [[ "$project_name" == "getnf" ]]; then
         git clone --quiet git@github.com:"$project_name/$project_name" "$project" > /dev/null
     else
-        git clone --quiet git@github.com:"$current_user/$project_name" "$project" > /dev/null
+        git clone --quiet git@github.com:"$CURRENT_USER/$project_name" "$project" > /dev/null
     fi
     # INFO: requires a Nerd Font
     echo -e "${GREEN}󰄴${RESET}"
 }
 
 open_in_tmux() {
+    # TODO: migrate to csv format for PROJECTLIST
     ensure_installed fzf
     ensure_installed tmux
 
@@ -167,8 +182,11 @@ open_in_tmux() {
         selected=$1
     else
         selected=$(
-            while IFS= read -r line; do
+            while IFS=, read -r line _; do
                 # TODO: this is my custom filter, maybe move to config later
+                # Reason I have it is coz I want the other projects to be
+                # checked during 'git status', but I never open them here.
+                # IDEA: maybe add 3rd column?
                 if [[ -d "$line" && "$line" == "$HOME/projects/"* ]]; then
                     echo "$line"
                 fi
