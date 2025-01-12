@@ -31,7 +31,7 @@ if [[ -z $PROJECTLIST ]]; then
 fi
 
 # Migration Info:
-# csv columns: project_location, github project user (default: $USER)
+# csv columns: project_location, github repo owner (default: $USER)
 if ! grep -q ',' "$PROJECTLIST"; then
     echo -e "${RED}Error:${RESET} $PROJECTLIST isn't a CSV. ${BLUE}Migrate${RESET} to continue."
     exit 1
@@ -123,14 +123,18 @@ add_project() {
     local project=$(pwd)
     local project_name="${project##*/}"
     # check if project already in the list
-    # TODO: this won't work in csv, but getting rid of -x mistakenly be true
-    # if $project matsches $github_user
-    if grep -qx "$project" "$PROJECTLIST"; then
+    if grep -q "$project" "$PROJECTLIST"; then
         echo -e "Project ${BLUE}$project_name${RESET} is already in the list ${RED}${RESET}"
     else
-        echo -en "Adding ${BLUE}$project_name${RESET} to the list "
-        # TODO: need a flag if github_user not default
-        echo "$project,$CURRENT_USER" >> "$PROJECTLIST"
+        if [[ -n "$1" ]]; then
+            gh_repo_owner="$1"
+        else
+            echo -en "Enter ${BLUE}github repo owner${RESET} (default: $CURRENT_USER): "
+            read -r gh_repo_owner
+            gh_repo_owner=${gh_repo_owner:-$CURRENT_USER}
+        fi
+        echo "$project,$gh_repo_owner" >> "$PROJECTLIST"
+        echo -en "Adding ${BLUE}$project_name${RESET} with owner ${BLUE}$gh_repo_owner${RESET} to the list "
         echo -e "${GREEN}󰄴${RESET}"
     fi
 }
@@ -139,15 +143,11 @@ get_project() {
     ensure_installed fzf
 
     # filter out installed projects
-    # TODO: migrate to csv format for PROJECTLIST
-    # while IFS=, read -r project _; do
-    # NOTE: how do I remember the github user of picked line with fzf?
-    # NOTE: should I grep for the line again?
-    local project=$(while IFS= read -r line; do
+    local project=$(while IFS=, read -r line _; do
         if [ ! -d "$line" ]; then
             echo "$line"
         fi
-    done < "$PROJECTLIST" | fzf)
+    done < "$PROJECTLIST" | fzf --cycle --bind 'tab:toggle-up,btab:toggle-down')
 
     if [[ -z $project ]]; then
         return 0
@@ -155,25 +155,19 @@ get_project() {
 
     local project_name="${project##*/}"
     local project_dir="${project%/*}"
+    local gh_repo_owner=$(awk -F, -v selected="$project" '$1 == selected {print $2}' "$PROJECTLIST")
 
     if [[ ! -d $project_dir ]]; then
         mkdir -p "$project_dir"
     fi
 
     echo -en "Cloning ${BLUE}$project_name${RESET} "
-    # TODO: I need a more universal way
-    # check if its getnf
-    if [[ "$project_name" == "getnf" ]]; then
-        git clone --quiet git@github.com:"$project_name/$project_name" "$project" > /dev/null
-    else
-        git clone --quiet git@github.com:"$CURRENT_USER/$project_name" "$project" > /dev/null
-    fi
+    git clone --quiet git@github.com:"$gh_repo_owner/$project_name" "$project" > /dev/null
     # INFO: requires a Nerd Font
     echo -e "${GREEN}󰄴${RESET}"
 }
 
 open_in_tmux() {
-    # TODO: migrate to csv format for PROJECTLIST
     ensure_installed fzf
     ensure_installed tmux
 
@@ -183,11 +177,7 @@ open_in_tmux() {
     else
         selected=$(
             while IFS=, read -r line _; do
-                # TODO: this is my custom filter, maybe move to config later
-                # Reason I have it is coz I want the other projects to be
-                # checked during 'git status', but I never open them here.
-                # IDEA: maybe add 3rd column?
-                if [[ -d "$line" && "$line" == "$HOME/projects/"* ]]; then
+                if [[ -d "$line" ]]; then
                     echo "$line"
                 fi
             done < "$PROJECTLIST" |
@@ -244,12 +234,12 @@ Usage:
   pctl [command]
 
 COMMANDS:
-  h, help      Show this help message
-  s, status    Show the status of all projects
-  p, pull      Pull updates in all projects
-  g, get       Clone a project from github
-  a, add       Add a project to the list
-  o, open      Open a project in a new tmux session
+  h, help               Show this help message
+  s, status             Show the status of all projects
+  p, pull               Pull updates in all projects
+  g, get                Clone a project from github
+  a, add [owner]        Add current project to the list (optional: pass github repo owner)
+  o, open [project]     Open a project in a new tmux session (optional: pass project name)
 EOF
 }
 
@@ -261,7 +251,7 @@ main() {
     local cmd=$1
     case $cmd in
         "get" | "g") get_project && exit 0 ;;
-        "add" | "a") add_project && exit 0 ;;
+        "add" | "a") add_project "$2" && exit 0 ;;
         "status" | "s") show_status && exit 0 ;;
         "pull" | "p") pull_updates && exit 0 ;;
         "open" | "o") open_in_tmux "$2" && exit 0 ;;
