@@ -12,12 +12,14 @@
 # "Use 'pushd ... || exit' or 'pushd ... || exit' in case pushd fails":
 #  https://www.shellcheck.net/wiki/SC2164
 
-GREEN='\e[0;32m'
-BLUE='\e[0;34m'
-RED='\e[0;31m'
-PURPLE="\e[0;35m"
-# CYAN="\e[1;36m"
-RESET='\e[0m'
+readonly VERSION="v0.1.0"
+
+readonly GREEN='\e[0;32m'
+readonly BLUE='\e[0;34m'
+readonly RED='\e[0;31m'
+readonly PURPLE="\e[0;35m"
+# readonly CYAN="\e[1;36m"
+readonly RESET='\e[0m'
 
 readonly PCTL_SHARE="$HOME/.local/share/pctl"
 readonly CURRENT_USER=$(whoami)
@@ -89,7 +91,7 @@ show_status() {
 pull_updates() {
     while IFS=, read -r project _; do
         local project_name="${project##*/}"
-        formatted_line=$(center_text "$project_name")
+        local formatted_line=$(center_text "$project_name")
 
         if [ -d "$project/.git" ]; then
             echo -e "${GREEN}${formatted_line}${RESET}"
@@ -126,6 +128,7 @@ add_project() {
     if grep -q "$project" "$PROJECTLIST"; then
         echo -e "Project ${BLUE}$project_name${RESET} is already in the list ${RED}${RESET}"
     else
+        local gh_repo_owner
         if [[ -n "$1" ]]; then
             gh_repo_owner="$1"
         else
@@ -184,20 +187,6 @@ open_in_tmux() {
                 sed "s|$HOME/\(.*\)|\1|" |
                 fzf --cycle --bind 'tab:toggle-up,btab:toggle-down'
         )
-
-        # selected=$(
-        #     find "$WORK" \
-        #         "$LOCAL_PLUGINS" \
-        #         "$OPENSOURCE_PROJECTS" \
-        #         "$PERSONAL_PROJECTS" \
-        #         "$PERSONAL_PROJECTS/bots" \
-        #         -mindepth 1 -maxdepth 1 -type d \
-        #         -not -path "$PERSONAL_PROJECTS/bots" \
-        #         -not -path "$LOCAL_PLUGINS" 2> /dev/null |
-        #         sed "s|$HOME/\(.*\)|\1|" |
-        #         fzf --cycle --bind 'tab:toggle-up,btab:toggle-down'
-        # )
-
     fi
 
     if [[ -z $selected ]]; then
@@ -209,7 +198,7 @@ open_in_tmux() {
     if [[ ! $selected == $HOME/* ]]; then
         selected=$HOME/$selected
     fi
-    selected_name=$(basename "$selected" | tr . _)
+    local selected_name=$(basename "$selected" | tr . _)
 
     # Tmux not running or detached:
     # the -A flag makes new-session behave like attach-session if session-name
@@ -235,6 +224,7 @@ Usage:
 
 COMMANDS:
   h, help               Show this help message
+  v, version            Print pctl version
   s, status             Show the status of all projects
   p, pull               Pull updates in all projects
   g, get                Clone a project from github
@@ -248,7 +238,7 @@ main() {
         display_help
         exit 0
     fi
-    local cmd=$1
+    local cmd="$1"
     case $cmd in
         "get" | "g") get_project && exit 0 ;;
         "add" | "a") add_project "$2" && exit 0 ;;
@@ -256,6 +246,7 @@ main() {
         "pull" | "p") pull_updates && exit 0 ;;
         "open" | "o") open_in_tmux "$2" && exit 0 ;;
         "help" | "h") display_help && exit 0 ;;
+        "version" | "v") echo "pctl $VERSION" && exit 0 ;;
         *) echo "Unknown command: $cmd" ;;
     esac
 }
