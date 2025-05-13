@@ -240,14 +240,14 @@ main() {
     fi
     local cmd="$1"
     case $cmd in
-        "get" | "g") get_project && exit 0 ;;
-        "add" | "a") add_project "$2" && exit 0 ;;
+        "help" | "h" | "-h" | "--help") display_help && exit 0 ;;
+        "version" | "v") echo "pctl $VERSION" && exit 0 ;;
         "status" | "s") show_status && exit 0 ;;
         "pull" | "p") pull_updates && exit 0 ;;
+        "get" | "g") get_project && exit 0 ;;
+        "add" | "a") add_project "$2" && exit 0 ;;
         "open" | "o") open_in_tmux "$2" && exit 0 ;;
-        "help" | "h") display_help && exit 0 ;;
-        "version" | "v") echo "pctl $VERSION" && exit 0 ;;
-        *) echo "Unknown command: $cmd" ;;
+        *) echo "Unknown command: $cmd" && exit 1 ;;
     esac
 }
 
