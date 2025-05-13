@@ -21,24 +21,6 @@ readonly PURPLE="\e[0;35m"
 # readonly CYAN="\e[1;36m"
 readonly RESET='\e[0m'
 
-readonly PCTL_SHARE="$HOME/.local/share/pctl"
-readonly CURRENT_USER=$(whoami)
-
-if [[ -z $PROJECTLIST ]]; then
-    readonly PROJECTLIST="$PCTL_SHARE/projectlist"
-    if [[ ! -f $PROJECTLIST ]]; then
-        mkdir -p "$PCTL_SHARE"
-        touch "$PROJECTLIST"
-    fi
-fi
-
-# Migration Info:
-# csv columns: project_location, github repo owner (default: $USER)
-if ! grep -q ',' "$PROJECTLIST"; then
-    echo -e "${RED}Error:${RESET} $PROJECTLIST isn't a CSV. ${BLUE}Migrate${RESET} to continue."
-    exit 1
-fi
-
 ensure_installed() {
     if ! command -v "$1" > /dev/null; then
         echo "Error: $1 not found"
@@ -143,8 +125,6 @@ add_project() {
 }
 
 get_project() {
-    ensure_installed fzf
-
     # filter out installed projects
     local project=$(while IFS=, read -r line _; do
         if [ ! -d "$line" ]; then
@@ -171,9 +151,6 @@ get_project() {
 }
 
 open_in_tmux() {
-    ensure_installed fzf
-    ensure_installed tmux
-
     local selected
     if [[ -n "$1" ]]; then
         selected=$1
@@ -194,7 +171,6 @@ open_in_tmux() {
     fi
 
     # make selected back to fullpath
-    # if [[ ! -d $selected ]]; then
     if [[ ! $selected == $HOME/* ]]; then
         selected=$HOME/$selected
     fi
@@ -234,6 +210,27 @@ EOF
 }
 
 main() {
+    ensure_installed fzf
+    ensure_installed tmux
+
+    readonly CURRENT_USER=$(whoami)
+    readonly PCTL_SHARE="$HOME/.local/share/pctl"
+
+    if [[ -z $PROJECTLIST ]]; then
+        readonly PROJECTLIST="$PCTL_SHARE/projectlist"
+        if [[ ! -f $PROJECTLIST ]]; then
+            mkdir -p "$PCTL_SHARE"
+            touch "$PROJECTLIST"
+        fi
+    fi
+
+    # Migration Info:
+    # csv columns: project_location, github repo owner (default: $USER)
+    if [[ $(stat -c "%s" "$PROJECTLIST") -ne 0 ]] && ! grep -q ',' "$PROJECTLIST"; then
+        echo -e "${RED}Error:${RESET} $PROJECTLIST isn't a CSV. ${BLUE}Migrate${RESET} to continue."
+        exit 1
+    fi
+
     if [[ $# -eq 0 ]]; then
         display_help
         exit 0
