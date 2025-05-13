@@ -12,7 +12,7 @@
 # "Use 'pushd ... || exit' or 'pushd ... || exit' in case pushd fails":
 #  https://www.shellcheck.net/wiki/SC2164
 
-readonly VERSION="v0.1.0"
+readonly VERSION="v0.2.0"
 
 readonly GREEN='\e[0;32m'
 readonly BLUE='\e[0;34m'
@@ -279,8 +279,8 @@ main() {
     fi
     local cmd="$1"
     case $cmd in
-        "help" | "h" | "-h" | "--help") display_help && exit 0 ;;
-        "version" | "v") echo "pctl $VERSION" && exit 0 ;;
+        "help" | "h" | "--help" | "-h") display_help && exit 0 ;;
+        "version" | "v" | "--version" | "-v" | "-V") echo "pctl $VERSION" && exit 0 ;;
         "status" | "s") show_status && exit 0 ;;
         "pull" | "p") pull_updates && exit 0 ;;
         "get" | "g") get_project && exit 0 ;;
