@@ -1,4 +1,8 @@
-# `pctl` - Manager Your Projects
+# `pctl` - Manage Your Projects
+
+## Requirements
+- fzf
+- tmux
 
 ## Installation
 ```
@@ -15,6 +19,7 @@ Usage:
 
 COMMANDS:
   h, help               Show this help message
+  v, version            Print pctl version
   s, status             Show the status of all projects
   p, pull               Pull updates in all projects
   g, get                Clone a project from github
