@@ -53,6 +53,13 @@ center_text() {
 
 }
 
+#######################################
+# Show git status of all projects in the list.
+# Globals:
+#   GREEN
+#   RESET
+#   PROJECTLIST
+#######################################
 show_status() {
     while IFS=, read -r project _; do
         local project_name="${project##*/}"
@@ -70,6 +77,13 @@ show_status() {
     done < "$PROJECTLIST"
 }
 
+#######################################
+# Run git pull for all projects in the list.
+# Globals:
+#   GREEN
+#   RESET
+#   PROJECTLIST
+#######################################
 pull_updates() {
     while IFS=, read -r project _; do
         local project_name="${project##*/}"
@@ -103,6 +117,17 @@ pull_updates() {
     wait
 }
 
+#######################################
+# Add CWD to the project list
+# Globals:
+#   BLUE
+#   GREEN
+#   RESET
+#   CURRENT_USER
+#   PROJECTLIST
+# Arguments:
+#   gh_repo_owner: (Optional) Owner of the repo on GitHub
+#######################################
 add_project() {
     local project=$(pwd)
     local project_name="${project##*/}"
@@ -124,6 +149,16 @@ add_project() {
     fi
 }
 
+#######################################
+# Clone the project chosen from the list
+# Globals:
+#   BLUE
+#   GREEN
+#   RESET
+#   PROJECTLIST
+# Arguments:
+#   gh_repo_owner: (Optional) Owner of the repo on GitHub
+#######################################
 get_project() {
     # filter out installed projects
     local project=$(while IFS=, read -r line _; do
@@ -150,6 +185,13 @@ get_project() {
     echo -e "${GREEN}󰄴${RESET}"
 }
 
+#######################################
+# Open in tmux the project chosen from the list
+# Globals:
+#   PROJECTLIST
+# Arguments:
+#   selected: (Optional) Name of the project to open
+#######################################
 open_in_tmux() {
     local selected
     if [[ -n "$1" ]]; then
