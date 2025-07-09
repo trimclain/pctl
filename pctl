@@ -179,7 +179,7 @@ get_project() {
     fi
 
     # Get repo owner name, compare it to local git name to know if use ssh or https clone
-    # NOTE: maybe better to add the --dev=false flag
+    # TODO: better to add the --dev=false flag
     local gh_repo_owner=$(awk -F, -v selected="$project" '$1 == selected {print $2}' "$PROJECTLIST")
     local gh_repo_owner_name=$(curl -s https://api.github.com/users/"$gh_repo_owner" | awk -F'"' '/"name":/ {print $4}')
     local local_gitconf_name=$(git config --global --list | awk -F= -v selected="user.name" '$1 == selected {print $2}')
@@ -191,8 +191,7 @@ get_project() {
     fi
 
     echo -e "Cloning ${BLUE}$project_name${RESET} "
-    echo "Woud git clone --quiet \"$gh_clone_url$gh_repo_owner/$project_name\" \"$project\" > /dev/null"
-    # git clone --quiet "$gh_clone_url$gh_repo_owner/$project_name" "$project" > /dev/null
+    git clone --quiet "$gh_clone_url$gh_repo_owner/$project_name" "$project" > /dev/null
     # INFO: requires a Nerd Font
     echo -e "${GREEN}󰄴${RESET}"
 }
