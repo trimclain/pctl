@@ -5,6 +5,6 @@ USER tester
 RUN echo 'export PATH=$HOME/.local/bin:$PATH' > /home/tester/.bash_aliases
 RUN mkdir -p /home/tester/.local/bin/
 COPY --chown=tester:tester ./pctl /home/tester/.local/bin/pctl
-COPY --chown=tester:tester ~/.local/share/pctl/projectlist /home/tester/.local/share/pctl/projectlist
+COPY --chown=tester:tester ./test/example_projectlist /home/tester/.local/share/pctl/projectlist
 WORKDIR /home/tester
 CMD ["/bin/bash"]
