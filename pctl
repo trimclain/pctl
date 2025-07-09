@@ -268,12 +268,12 @@ main() {
     ensure_installed tmux
 
     # Check if git config name and email are configured
-    if ! git config --global --list > /dev/null; then
+    if ! git config --global --list 2> /dev/null | grep -q "user.name"; then
         echo "Error: git not configured."
         echo "Run:"
-        echo "  git config --global user.name \"<Your Name\""
+        echo "  git config --global user.name \"<Your Name>\""
         echo "and"
-        echo "  git config --global user.email \"<Your Email\""
+        echo "  git config --global user.email \"<Your Email>\""
         exit 1
     fi
 
