@@ -83,8 +83,12 @@ show_status() {
 #   GREEN
 #   RESET
 #   PROJECTLIST
+# Arguments:
+#   async_flag: (Optional) Whether to pull the updates async
 #######################################
 pull_updates() {
+    local arg="$1"
+
     while IFS=, read -r project _; do
         local project_name="${project##*/}"
         local formatted_line=$(center_text "$project_name")
@@ -111,10 +115,18 @@ pull_updates() {
             # fi
             #######################################################################
 
-            git -C "$project" pull &
+            # not async
+            if [[ "$arg" == "-n" || "$arg" == "--not-async" ]]; then
+                git -C "$project" pull
+            else
+                git -C "$project" pull &
+            fi
         fi
     done < "$PROJECTLIST"
-    wait
+
+    if [[ "$arg" != "-n" && "$arg" != "--not-async" ]]; then
+        wait
+    fi
 }
 
 #######################################
@@ -244,7 +256,7 @@ COMMANDS:
   h, help               Show this help message
   v, version            Print pctl version
   s, status             Show the status of all projects
-  p, pull               Pull updates in all projects
+  p, pull [-n]          Pull updates in all projects (optional: pass -n or --not-async)
   g, get                Clone a project from github
   a, add [owner]        Add current project to the list (optional: pass github repo owner)
   o, open [project]     Open a project in a new tmux session (optional: pass project name)
@@ -278,11 +290,12 @@ main() {
         exit 0
     fi
     local cmd="$1"
+    shift
     case $cmd in
         "help" | "h" | "--help" | "-h") display_help && exit 0 ;;
         "version" | "v" | "--version" | "-v" | "-V") echo "pctl $VERSION" && exit 0 ;;
         "status" | "s") show_status && exit 0 ;;
-        "pull" | "p") pull_updates && exit 0 ;;
+        "pull" | "p") pull_updates "$@" && exit 0 ;;
         "get" | "g") get_project && exit 0 ;;
         "add" | "a") add_project "$2" && exit 0 ;;
         "open" | "o") open_in_tmux "$2" && exit 0 ;;
