@@ -115,9 +115,9 @@ pull_updates() {
 
         if [ -d "$project/.git" ]; then
 
-            log_file=$(mktemp "$tmp_dir/${project_name}_XXXXXX.log")
+            local log_file=$(mktemp "$tmp_dir/${project_name}_XXXXXX.log")
 
-            installed_projects+=("$project_name")
+            installed_projects+=("$formatted_line")
             log_files+=("$log_file")
 
             echo -e "${GREEN}${formatted_line}${RESET}"
@@ -131,8 +131,7 @@ pull_updates() {
     delete_last_lines "$len"
 
     for i in "${!installed_projects[@]}"; do
-        local formatted_line=$(center_text "${installed_projects[$i]}")
-        echo -e "${GREEN}${formatted_line}${RESET}"
+        echo -e "${GREEN}${installed_projects[$i]}${RESET}"
         cat "${log_files[$i]}"
     done
 }
