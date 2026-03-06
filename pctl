@@ -177,6 +177,7 @@ add_project() {
 
 #######################################
 # Clone the project chosen from the list.
+# Prefer SSH but fallback to HTTPS.
 # Globals:
 #   BLUE
 #   GREEN
@@ -194,19 +195,26 @@ get_project() {
     done < "$PROJECTLIST" | fzf --cycle --bind 'tab:toggle-up,btab:toggle-down')
 
     if [[ -z $project ]]; then
-        return 0
+        exit 0
     fi
 
     local project_name="${project##*/}"
     local project_dir="${project%/*}"
-    local gh_repo_owner=$(awk -F, -v selected="$project" '$1 == selected {print $2}' "$PROJECTLIST")
+    local gh_repo_owner=$(awk -F, -v selected="$project" '$1 == selected {print $2; exit}' "$PROJECTLIST")
 
     if [[ ! -d $project_dir ]]; then
         mkdir -p "$project_dir"
     fi
 
     echo -en "Cloning ${BLUE}$project_name${RESET} "
-    git clone --quiet git@github.com:"$gh_repo_owner/$project_name" "$project" > /dev/null
+
+    if GIT_SSH_COMMAND="ssh -o BatchMode=yes -o ConnectTimeout=1" \
+        git clone --quiet "git@github.com:$gh_repo_owner/$project_name" "$project" 2> /dev/null; then
+        :
+    else
+        git clone --quiet "https://github.com/$gh_repo_owner/$project_name" "$project"
+    fi
+
     echo -e "${GREEN}✔${RESET}"
 }
 
