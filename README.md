@@ -1,6 +1,7 @@
 # `pctl` - Manage Your Projects
 
 ## Requirements
+- git
 - fzf
 - tmux
 
