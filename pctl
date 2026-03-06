@@ -18,7 +18,6 @@ readonly GREEN='\e[0;32m'
 readonly BLUE='\e[0;34m'
 readonly RED='\e[0;31m'
 readonly PURPLE="\e[0;35m"
-# readonly CYAN="\e[1;36m"
 readonly RESET='\e[0m'
 
 ensure_installed() {
@@ -159,7 +158,7 @@ add_project() {
         exit 1
     fi
 
-    if grep -q "$project" "$PROJECTLIST"; then
+    if grep -qF "$project" "$PROJECTLIST"; then
         echo -e "Project ${BLUE}$project_name${RESET} is already in the list ${RED}${RESET}"
     else
         local gh_repo_owner
@@ -271,7 +270,7 @@ COMMANDS:
   h, help               Show this help message
   v, version            Print pctl version
   s, status             Show the status of all projects
-  p, pull [-n]          Pull updates in all projects (optional: pass -n or --not-async)
+  p, pull               Pull updates in all projects
   g, get                Clone a project from github
   a, add [owner]        Add current project to the list (optional: pass github repo owner)
   o, open [project]     Open a project in a new tmux session (optional: pass project name)
