@@ -28,6 +28,10 @@ ensure_installed() {
     fi
 }
 
+readonly MESSAGE_LENGTH=60
+readonly LEFT_LENGTH=25
+
+##################################################################
 # Idea:
 #                         MESSAGE_LENGTH
 #                               |
@@ -36,12 +40,10 @@ ensure_installed() {
 # (------------------------)
 #            |
 #      LEFT_LENGTH
-
-readonly MESSAGE_LENGTH=60
-readonly LEFT_LENGTH=25
-
+#
 # Produce the following:
 # -------------------------> <text> <-----------------------------
+##################################################################
 center_text() {
     local text="$1"
     local text_length=${#text}
@@ -50,7 +52,26 @@ center_text() {
     local left=$(printf "%-${LEFT_LENGTH}s" "" | tr ' ' '-')
     local right=$(printf "%-${right_length}s" "" | tr ' ' '-')
     printf "%s> ${PURPLE}%s${GREEN} <%s" "$left" "$text" "$right"
+}
 
+#######################################
+# Delete the last n lines in the terminal.
+# Arguments:
+#   n: (Optional) Number of lines; default: 1
+#######################################
+delete_last_lines() {
+    local n=${1:-1}
+
+    while ((n-- > 0)); do
+        printf '\r'      # Move to the start of the current line.
+        printf '\033[2K' # Clear the entire current line.
+        printf '\033[1A' # Move cursor up by one line.
+    done
+
+    # After the loop, we are sitting on the line above the top deleted line.
+    # Move to column 1 and clear that line too, so the full block is gone.
+    printf '\r'
+    printf '\033[2K'
 }
 
 #######################################
@@ -83,50 +104,37 @@ show_status() {
 #   GREEN
 #   RESET
 #   PROJECTLIST
-# Arguments:
-#   async_flag: (Optional) Whether to pull the updates async
 #######################################
 pull_updates() {
-    local arg="$1"
+    local installed_projects=()
+    local log_files=()
 
     while IFS=, read -r project _; do
         local project_name="${project##*/}"
         local formatted_line=$(center_text "$project_name")
 
         if [ -d "$project/.git" ]; then
+
+            log_file=$(mktemp "$tmp_dir/${project_name}_XXXXXX.log")
+
+            installed_projects+=("$project_name")
+            log_files+=("$log_file")
+
             echo -e "${GREEN}${formatted_line}${RESET}"
 
-            #######################################################################
-            # TODO: should I fetch to make sure it's latest? Was that the problem?
-            # UPSTREAM=${1:-'@{u}'}
-            # LOCAL=$(git rev-parse @)
-            # REMOTE=$(git rev-parse "$UPSTREAM")
-            # BASE=$(git merge-base @ "$UPSTREAM")
-            # if [ $LOCAL = $REMOTE ]; then
-            #     echo "Up-to-date"
-            # elif [ $LOCAL = $BASE ]; then
-            #     echo "Pulling updates..."
-            #     git pull
-            # elif [ $REMOTE = $BASE ]; then
-            #     echo "Pushing updates..."
-            #     git push
-            # else
-            #     echo "Diverged"
-            # fi
-            #######################################################################
-
-            # not async
-            if [[ "$arg" == "-n" || "$arg" == "--not-async" ]]; then
-                git -C "$project" pull
-            else
-                git -C "$project" pull &
-            fi
+            git -C "$project" pull > "$log_file" 2>&1 &
         fi
     done < "$PROJECTLIST"
+    wait
 
-    if [[ "$arg" != "-n" && "$arg" != "--not-async" ]]; then
-        wait
-    fi
+    local len=${#installed_projects[@]}
+    delete_last_lines "$len"
+
+    for i in "${!installed_projects[@]}"; do
+        local formatted_line=$(center_text "${installed_projects[$i]}")
+        echo -e "${GREEN}${formatted_line}${RESET}"
+        cat "${log_files[$i]}"
+    done
 }
 
 #######################################
@@ -278,6 +286,9 @@ main() {
         fi
     fi
 
+    tmp_dir=$(mktemp -d)
+    trap 'rm -rf -- "$tmp_dir"' EXIT
+
     # Migration Info:
     # csv columns: project_location, github repo owner (default: $USER)
     if [[ $(stat -c "%s" "$PROJECTLIST") -ne 0 ]] && ! grep -q ',' "$PROJECTLIST"; then
@@ -295,7 +306,7 @@ main() {
         "help" | "h" | "--help" | "-h") display_help && exit 0 ;;
         "version" | "v" | "--version" | "-v" | "-V") echo "pctl $VERSION" && exit 0 ;;
         "status" | "s") show_status && exit 0 ;;
-        "pull" | "p") pull_updates "$@" && exit 0 ;;
+        "pull" | "p") pull_updates && exit 0 ;;
         "get" | "g") get_project && exit 0 ;;
         "add" | "a") add_project "$2" && exit 0 ;;
         "open" | "o") open_in_tmux "$2" && exit 0 ;;
