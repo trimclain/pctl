@@ -277,6 +277,10 @@ main() {
     readonly CURRENT_USER=$(whoami)
     readonly PCTL_SHARE="$HOME/.local/share/pctl"
 
+    # INFO:
+    # PROJECTLIST is a csv with following columns:
+    #   - project location full path
+    #   - github repo owner (default: $USER)
     if [[ -z $PROJECTLIST ]]; then
         readonly PROJECTLIST="$PCTL_SHARE/projectlist"
         if [[ ! -f $PROJECTLIST ]]; then
@@ -287,13 +291,6 @@ main() {
 
     tmp_dir=$(mktemp -d)
     trap 'rm -rf -- "$tmp_dir"' EXIT
-
-    # Migration Info:
-    # csv columns: project_location, github repo owner (default: $USER)
-    if [[ $(stat -c "%s" "$PROJECTLIST") -ne 0 ]] && ! grep -q ',' "$PROJECTLIST"; then
-        echo -e "${RED}Error:${RESET} $PROJECTLIST isn't a CSV. ${BLUE}Migrate${RESET} to continue."
-        exit 1
-    fi
 
     if [[ $# -eq 0 ]]; then
         display_help
