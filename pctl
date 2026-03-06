@@ -106,6 +106,9 @@ show_status() {
 #   PROJECTLIST
 #######################################
 pull_updates() {
+    local tmp_dir=$(mktemp -d)
+    trap 'rm -rf -- "$tmp_dir"' EXIT
+
     local installed_projects=()
     local log_files=()
 
@@ -150,7 +153,12 @@ pull_updates() {
 add_project() {
     local project=$(pwd)
     local project_name="${project##*/}"
-    # check if project already in the list
+
+    if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+        echo -e "Project ${BLUE}$project_name${RESET} is not a git repository ${RED}${RESET}"
+        exit 1
+    fi
+
     if grep -q "$project" "$PROJECTLIST"; then
         echo -e "Project ${BLUE}$project_name${RESET} is already in the list ${RED}${RESET}"
     else
@@ -288,9 +296,6 @@ main() {
             touch "$PROJECTLIST"
         fi
     fi
-
-    tmp_dir=$(mktemp -d)
-    trap 'rm -rf -- "$tmp_dir"' EXIT
 
     if [[ $# -eq 0 ]]; then
         display_help
