@@ -139,7 +139,7 @@ pull_updates() {
 }
 
 #######################################
-# Add CWD to the project list
+# Add CWD to the project list.
 # Globals:
 #   BLUE
 #   GREEN
@@ -171,12 +171,12 @@ add_project() {
         fi
         echo "$project,$gh_repo_owner" >> "$PROJECTLIST"
         echo -en "Adding ${BLUE}$project_name${RESET} with owner ${BLUE}$gh_repo_owner${RESET} to the list "
-        echo -e "${GREEN}󰄴${RESET}"
+        echo -e "${GREEN}✔${RESET}"
     fi
 }
 
 #######################################
-# Clone the project chosen from the list
+# Clone the project chosen from the list.
 # Globals:
 #   BLUE
 #   GREEN
@@ -207,12 +207,11 @@ get_project() {
 
     echo -en "Cloning ${BLUE}$project_name${RESET} "
     git clone --quiet git@github.com:"$gh_repo_owner/$project_name" "$project" > /dev/null
-    # INFO: requires a Nerd Font
-    echo -e "${GREEN}󰄴${RESET}"
+    echo -e "${GREEN}✔${RESET}"
 }
 
 #######################################
-# Open in tmux the project chosen from the list
+# Open the project chosen from the list in tmux.
 # Globals:
 #   PROJECTLIST
 # Arguments:
