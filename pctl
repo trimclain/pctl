@@ -316,8 +316,8 @@ main() {
         "status" | "s") show_status && exit 0 ;;
         "pull" | "p") pull_updates && exit 0 ;;
         "get" | "g") get_project && exit 0 ;;
-        "add" | "a") add_project "$2" && exit 0 ;;
-        "open" | "o") open_in_tmux "$2" && exit 0 ;;
+        "add" | "a") add_project "$1" && exit 0 ;;
+        "open" | "o") open_in_tmux "$1" && exit 0 ;;
         *) echo "Unknown command: $cmd" && exit 1 ;;
     esac
 }
